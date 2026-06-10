@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
@@ -8,24 +8,40 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  documents Document[]
+  id         String     @id @default(uuid())
+  name       String
+  email      String     @unique
+  password   String
+  createdAt  DateTime   @default(now())
+  documents  Document[]
 }
 
 model Document {
-  id          String   @id @default(uuid())
-  title       String
-  fileUrl     String
-  status      String   @default("pending")
-  uploadedBy  User     @relation(fields: [userId], references: [id])
-  userId      String
-  signToken   String?  @unique
-  createdAt   DateTime @default(now())
-  auditLogs   AuditLog[]
+  id         String      @id @default(uuid())
+  title      String
+  fileUrl    String
+  status     String      @default("pending")
+  uploadedBy User        @relation(fields: [userId], references: [id])
+  userId     String
+  signToken  String?     @unique
+  createdAt  DateTime    @default(now())
+  auditLogs  AuditLog[]
+  signatures Signature[]
+}
+
+model Signature {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  signerName String
+  signerEmail String
+  x          Float
+  y          Float
+  page       Int      @default(1)
+  width      Float    @default(150)
+  height     Float    @default(50)
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
 }
 
 model AuditLog {

@@ -5,6 +5,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Upload from './pages/Upload'
 import DocumentPreview from './pages/DocumentPreview'
+import SignatureEditor from './pages/SignatureEditor'
 
 // Protect routes — redirect to login if not authenticated
 const PrivateRoute = ({ children }) => {
@@ -21,6 +22,7 @@ function AppRoutes() {
       <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
       <Route path="/upload" element={<PrivateRoute><Upload /></PrivateRoute>} />
       <Route path="/docs/:id" element={<PrivateRoute><DocumentPreview /></PrivateRoute>} />
+      <Route path="/docs/:id/editor" element={<PrivateRoute><SignatureEditor /></PrivateRoute>} />
     </Routes>
   )
 }
