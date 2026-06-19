@@ -1,12 +1,24 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
+const fs = require('fs')
 
 const authRoutes = require('./src/routes/authRoutes')
 const documentRoutes = require('./src/routes/documentRoutes')
 const signatureRoutes = require('./src/routes/signatureRoutes')
 const publicSignRoutes = require('./src/routes/publicSignRoutes')
 const auditRoutes = require('./src/routes/auditRoutes')
+
+// Ensure upload directories exist
+const uploadsDir = 'uploads'
+const signedDir = 'signed-pdfs'
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true })
+}
+if (!fs.existsSync(signedDir)) {
+  fs.mkdirSync(signedDir, { recursive: true })
+}
 
 const app = express()
 app.use(cors({
