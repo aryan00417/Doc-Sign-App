@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Draggable from "react-draggable";
 import API from "../api/axios";
@@ -7,6 +7,9 @@ export default function SignatureEditor() {
   const { id } = useParams();
   const navigate = useNavigate();
   const overlayRef = useRef(null);
+
+  const [totalPages, setTotalPages] = useState(1)
+const [selectedPage, setSelectedPage] = useState(1)
 
   const [doc, setDoc] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,32 +22,47 @@ export default function SignatureEditor() {
   const canvasRef = useRef(null);
   const dragRefs = useRef({});
 
+  const pdfUrl = doc
+    ? `http://localhost:5000/${doc.fileUrl.replace(/\\/g, "/")}`
+    : null;
+
   useEffect(() => {
-    if (!doc) return;
-    let isRendering = false;
+  if (!doc || !pdfUrl) return
 
-    const renderPDF = async () => {
-      if (isRendering) return;
-      isRendering = true;
+  let renderTask = null
+  let cancelled = false
 
-      const pdfjsLib = await import("pdfjs-dist");
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+  const renderPDF = async () => {
+    const pdfjsLib = await import('pdfjs-dist')
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
 
-      const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
-      const page = await pdf.getPage(1);
-      const viewport = page.getViewport({ scale: 1.5 });
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const context = canvas.getContext("2d");
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
+    const pdf = await pdfjsLib.getDocument(pdfUrl).promise
+    setTotalPages(pdf.numPages)
 
-      await page.render({ canvasContext: context, viewport }).promise;
-    };
+    const page = await pdf.getPage(selectedPage)
+    const viewport = page.getViewport({ scale: 1.5 })
+    const canvas = canvasRef.current
+    if (!canvas || cancelled) return
 
-    renderPDF();
-  }, [doc]);
+    const context = canvas.getContext('2d')
+    canvas.height = viewport.height
+    canvas.width = viewport.width
 
+    renderTask = page.render({ canvasContext: context, viewport })
+    try {
+      await renderTask.promise
+    } catch (err) {
+      if (err?.name !== 'RenderingCancelledException') console.error(err)
+    }
+  }
+
+  renderPDF()
+
+  return () => {
+    cancelled = true
+    if (renderTask) renderTask.cancel()
+  }
+}, [doc, pdfUrl, selectedPage])
   // Fetch document and existing signatures
   useEffect(() => {
     const fetchData = async () => {
@@ -65,34 +83,35 @@ export default function SignatureEditor() {
   }, [id]);
 
   // Add a new draggable signature placeholder
-  const addSignaturePlaceholder = () => {
-    if (!form.signerName || !form.signerEmail) {
-      return setError("Enter signer name and email first");
-    }
-    setError("");
-    setSignatures((prev) => [
-      ...prev,
-      {
-        tempId: Date.now(),
-        signerName: form.signerName,
-        signerEmail: form.signerEmail,
-        x: 100,
-        y: 100,
-        width: 150,
-        height: 50,
-        page: 1,
-      },
-    ]);
-  };
-
+const addSignaturePlaceholder = () => {
+  if (!form.signerName || !form.signerEmail) {
+    return setError('Enter signer name and email first')
+  }
+  setError('')
+  const scrollTop = overlayRef.current ? overlayRef.current.scrollTop : 0
+  setSignatures(prev => [...prev, {
+    tempId: Date.now(),
+    signerName: form.signerName,
+    signerEmail: form.signerEmail,
+    x: 100,
+    y: 100 + scrollTop,
+    width: 150,
+    height: 50,
+    page: selectedPage
+  }])
+}
   // Track position as user drags
-  const handleDragStop = (tempId, data) => {
-    setSignatures((prev) =>
-      prev.map((sig) =>
-        sig.tempId === tempId ? { ...sig, x: data.x, y: data.y } : sig
-      )
-    );
-  };
+const handleDragStop = (tempId, data) => {
+  const scrollTop = overlayRef.current ? overlayRef.current.scrollTop : 0
+  setSignatures(prev =>
+    prev.map(sig =>
+      sig.tempId === tempId
+        ? { ...sig, x: data.x, y: data.y + scrollTop }
+        : sig
+    )
+  )
+}
+
 
   // Remove a placeholder before saving
   const removePlaceholder = (tempId) => {
@@ -114,7 +133,7 @@ export default function SignatureEditor() {
             signerName: sig.signerName,
             signerEmail: sig.signerEmail,
             x: sig.x,
-            y: sig.y,
+            y: sig.y ,
             page: sig.page,
             width: sig.width,
             height: sig.height,
@@ -133,10 +152,24 @@ export default function SignatureEditor() {
     }
   };
 
+  const [generating, setGenerating] = useState(false);
+
+  const generateSignedPdf = async () => {
+    setGenerating(true);
+    setError("");
+    try {
+      const res = await API.post(`/docs/${id}/generate-signed-pdf`);
+      setSuccess("Signed PDF generated! 🎉");
+      setDoc(res.data.document);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to generate signed PDF");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (loading) return <p className="p-8 text-gray-500">Loading editor...</p>;
   if (!doc) return <p className="p-8 text-red-500">Document not found</p>;
-
-  const pdfUrl = `http://localhost:5000/${doc.fileUrl.replace(/\\/g, "/")}`;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -157,6 +190,13 @@ export default function SignatureEditor() {
           className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 disabled:opacity-40"
         >
           {saving ? "Saving..." : `Save ${signatures.length} Field(s)`}
+        </button>
+        <button
+          onClick={generateSignedPdf}
+          disabled={generating || savedSignatures.length === 0}
+          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 disabled:opacity-40 ml-2"
+        >
+          {generating ? "Generating..." : "🔏 Generate Signed PDF"}
         </button>
       </nav>
 
@@ -217,34 +257,41 @@ export default function SignatureEditor() {
           )}
 
           {/* Already saved signatures */}
-          {savedSignatures.length > 0 && (
-            <div className="bg-white rounded-xl shadow p-5">
-              <h3 className="font-bold text-gray-800 mb-3">Saved Fields</h3>
-              <ul className="space-y-2">
-                {savedSignatures.map((sig) => (
-                  <li
-                    key={sig.id}
-                    className="text-sm text-gray-600 border-b pb-2"
-                  >
-                    <p className="font-medium">{sig.signerName}</p>
-                    <p className="text-xs text-gray-400">{sig.signerEmail}</p>
-                    <p className="text-xs text-gray-400">
-                      Position: ({Math.round(sig.x)}, {Math.round(sig.y)})
-                    </p>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        sig.status === "signed"
-                          ? "bg-green-100 text-green-700"
-                          : "bg-yellow-100 text-yellow-700"
-                      }`}
-                    >
-                      {sig.status}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+         {savedSignatures.length > 0 && (
+  <div className="bg-white rounded-xl shadow p-5">
+    <h3 className="font-bold text-gray-800 mb-3">Saved Fields</h3>
+    <ul className="space-y-2">
+      {savedSignatures.map(sig => (
+        <li key={sig.id} className="text-sm text-gray-600 border-b pb-2">
+          <p className="font-medium">{sig.signerName}</p>
+          <p className="text-xs text-gray-400">{sig.signerEmail}</p>
+          <p className="text-xs text-gray-400">
+            Position: ({Math.round(sig.x)}, {Math.round(sig.y)})
+          </p>
+          <div className="flex items-center justify-between mt-1">
+            <span className={`text-xs px-2 py-0.5 rounded-full ${
+              sig.status === 'signed'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-yellow-100 text-yellow-700'
+            }`}>
+              {sig.status}
+            </span>
+            
+            <button
+              onClick={async () => {
+                await API.delete(`/signatures/${sig.id}`)
+                setSavedSignatures(prev => prev.filter(s => s.id !== sig.id))
+              }}
+              className="text-red-400 hover:text-red-600 text-xs"
+            >
+              Delete
+            </button>
+          </div>
+        </li>
+      ))}
+    </ul>
+  </div>
+)}
         </div>
 
         {/* Right Panel — PDF with draggable overlays */}
@@ -256,6 +303,28 @@ export default function SignatureEditor() {
           >
             {/* PDF rendered on canvas — allows overlays to work */}
             <canvas ref={canvasRef} className="block" />
+            {/* Page Controls */}
+{totalPages > 1 && (
+  <div className="flex items-center justify-center gap-4 py-2 bg-gray-50 border-t">
+    <button
+      onClick={() => setSelectedPage(p => Math.max(1, p - 1))}
+      disabled={selectedPage === 1}
+      className="px-3 py-1 text-sm bg-white border rounded hover:bg-gray-100 disabled:opacity-40"
+    >
+      ← Prev
+    </button>
+    <span className="text-sm text-gray-600">
+      Page {selectedPage} of {totalPages}
+    </span>
+    <button
+      onClick={() => setSelectedPage(p => Math.min(totalPages, p + 1))}
+      disabled={selectedPage === totalPages}
+      className="px-3 py-1 text-sm bg-white border rounded hover:bg-gray-100 disabled:opacity-40"
+    >
+      Next →
+    </button>
+  </div>
+)}
             {signatures.map((sig) => {
               if (!dragRefs.current[sig.tempId]) {
                 dragRefs.current[sig.tempId] = React.createRef();

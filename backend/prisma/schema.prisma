@@ -17,16 +17,17 @@ model User {
 }
 
 model Document {
-  id         String      @id @default(uuid())
-  title      String
-  fileUrl    String
-  status     String      @default("pending")
-  uploadedBy User        @relation(fields: [userId], references: [id])
-  userId     String
-  signToken  String?     @unique
-  createdAt  DateTime    @default(now())
-  auditLogs  AuditLog[]
-  signatures Signature[]
+  id           String      @id @default(uuid())
+  title        String
+  fileUrl      String
+  signedFileUrl String?
+  status       String      @default("pending")
+  uploadedBy   User        @relation(fields: [userId], references: [id])
+  userId       String
+  signToken    String?     @unique
+  createdAt    DateTime    @default(now())
+  auditLogs    AuditLog[]
+  signatures   Signature[]
 }
 
 model Signature {
