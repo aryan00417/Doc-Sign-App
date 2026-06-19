@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Draggable from "react-draggable";
 import API from "../api/axios";
+import { SERVER_URL } from '../utils/config'
 
 export default function SignatureEditor() {
   const { id } = useParams();
@@ -22,9 +23,8 @@ const [selectedPage, setSelectedPage] = useState(1)
   const canvasRef = useRef(null);
   const dragRefs = useRef({});
 
-  const pdfUrl = doc
-    ? `http://localhost:5000/${doc.fileUrl.replace(/\\/g, "/")}`
-    : null;
+  const pdfUrl = doc ? `${SERVER_URL}/${doc.fileUrl.replace(/\\/g, "/")}` : null;
+
 
   useEffect(() => {
   if (!doc || !pdfUrl) return

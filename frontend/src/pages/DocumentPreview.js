@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { SERVER_URL } from '../utils/config'
 
 import API from "../api/axios";
 
@@ -52,7 +53,7 @@ const handleSendForReview = async () => {
   if (loading) return <p className="p-8 text-gray-500">Loading...</p>;
   if (!doc) return <p className="p-8 text-red-500">Document not found</p>;
 
-  const pdfUrl = `http://localhost:5000/${doc.fileUrl.replace(/\\/g, "/")}`;
+  const pdfUrl = `${SERVER_URL}/${doc.fileUrl.replace(/\\/g, "/")}`;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -97,7 +98,7 @@ const handleSendForReview = async () => {
     <div className="bg-white rounded-xl shadow p-4 mb-6 flex items-center justify-between">
       <p className="text-sm text-gray-600">✅ Signed version available</p>
       <a
-        href={`http://localhost:5000/${doc.signedFileUrl.replace(/\\/g, '/')}`}
+        href={`${SERVER_URL}/${doc.signedFileUrl.replace(/\\/g, "/")}`}
         target="_blank"
         rel="noopener noreferrer"
         className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700"

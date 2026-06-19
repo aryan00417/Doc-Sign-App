@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import axios from 'axios'
+import { SERVER_URL } from '../utils/config'
 
 export default function PublicSign() {
   const { token } = useParams()
@@ -18,7 +19,7 @@ export default function PublicSign() {
   useEffect(() => {
     const fetchDoc = async () => {
       try {
-        const res = await axios.get(`http://localhost:5000/api/sign/${token}?sigId=${sigId}`)
+        const res = await axios.get(`${SERVER_URL}/api/sign/${token}`)
         setDoc(res.data.document)
         setSignature(res.data.signature)
       } catch (err) {
@@ -32,7 +33,7 @@ export default function PublicSign() {
 
   const handleRespond = async (responseAction) => {
     try {
-      await axios.post(`http://localhost:5000/api/sign/${token}/respond`, {
+      await axios.post(`${SERVER_URL}/api/sign/${token}/respond`, {
         sigId,
         action: responseAction,
         reason: responseAction === 'rejected' ? reason : null
@@ -73,8 +74,8 @@ export default function PublicSign() {
   )
 
   const pdfUrl = doc.signedFileUrl
-  ? `http://localhost:5000/${doc.signedFileUrl.replace(/\\/g, '/')}`
-  : `http://localhost:5000/${doc.fileUrl.replace(/\\/g, '/')}`
+  ? `${SERVER_URL}/${doc.signedFileUrl.replace(/\\/g, '/')}`
+  : `${SERVER_URL}/${doc.fileUrl.replace(/\\/g, '/')}`
 
   return (
     <div className="min-h-screen bg-gray-100">
