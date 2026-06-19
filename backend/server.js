@@ -9,7 +9,10 @@ const publicSignRoutes = require('./src/routes/publicSignRoutes')
 const auditRoutes = require('./src/routes/auditRoutes')
 
 const app = express()
-app.use(cors())
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}))
 app.use(express.json())
 app.use('/uploads', express.static('uploads'))
 app.use('/signed-pdfs', express.static('signed-pdfs'))
